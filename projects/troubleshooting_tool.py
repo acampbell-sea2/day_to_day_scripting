@@ -93,4 +93,25 @@ def main():
         choice = input("\nSelect an option: ").strip()
 
         if choice == "0":
-            print("Exiting the troubleshooting tool.")
+            print("Exiting the troubleshooting tool.")           
+            break
+        elif choice == "1":
+            set_case_details(session)
+        elif choice in ("2", "3"):
+            if not has_case_details(session):
+                print("Choose option 1 and enter a serial number or Jira ticket first.")
+                continue
+
+            if choice == "2":
+                verify_node(session)
+            else:
+                basic_snapshot(session)
+        else:
+            print("Invalid selection. Choose 0, 1, 2, or 3.")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (KeyboardInterrupt, EOFError):
+        print("\nExiting the troubleshooting tool.")
