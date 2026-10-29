@@ -4,12 +4,56 @@
 Connection verification and basic snapshot collection are menu placeholders.
 """
 
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
+from shutil import get_terminal_size
+from textwrap import wrap
 from urllib.parse import quote
 
 
 OUTPUT_DIR = Path.home() / "troubleshooting-output"
+
+
+def clear_screen():
+    """Clear an interactive WSL/Linux terminal."""
+    if not sys.stdout.isatty():
+        return
+
+    try:
+        subprocess.run(["clear"], check=False, stderr=subprocess.DEVNULL)
+    except OSError:
+        # The menu can still run if the clear command is unavailable.
+        pass
+
+
+def pause():
+    """Keep action results visible until the user is ready."""
+    input("\nPress Enter to return to the menu...")
+
+
+def print_box(title, lines=()):
+    """Draw a box that wraps long text; None adds a horizontal divider."""
+    terminal_width = get_terminal_size(fallback=(80, 24)).columns
+    width = max(1, min(64, terminal_width - 4))
+    border = "=" * (width + 4)
+
+    print(border)
+    for line in wrap(title, width=width) or [""]:
+        print(f"| {line:^{width}} |")
+    print(border)
+
+    for line in lines:
+        if line is None:
+            print(border)
+            continue
+
+        for wrapped_line in wrap(line, width=width) or [""]:
+            print(f"| {wrapped_line:<{width}} |")
+
+    if lines:
+        print(border)
 
 
 def has_case_details(session):
@@ -19,9 +63,18 @@ def has_case_details(session):
 
 def set_case_details(session):
     """Replace the active identifiers together, preserving capitalization."""
-    print("\nEnter the identifiers for this case.")
-    print("Provide a serial number or Jira ticket. Hostname is optional.")
-    print("When an update is accepted, blank fields clear their old values.")
+    clear_screen()
+    print_box(
+        "Case Details",
+        [
+            "Provide a serial number or Jira ticket.",
+            "Hostname is optional.",
+            "",
+            "Accepted updates replace all three fields.",
+            "Blank fields clear their previous values.",
+        ],
+    )
+    print()
 
     serial_number = input("Serial number (case-sensitive): ").strip()
     jira_ticket = input("Jira ticket number: ").strip()
@@ -77,6 +130,8 @@ def save_output(session, action, output):
 
 def verify_node(session):
     """Add the node connection and identity checks here in the next step."""
+    clear_screen()
+    print_box("Node Connection Verification and Identity")
     print("\nNode connection verification and identity: not implemented yet.")
     # Once real output exists, use:
     # save_output(session, "node_identity", collected_output)
@@ -84,6 +139,8 @@ def verify_node(session):
 
 def basic_snapshot(session):
     """Add basic snapshot collection here in a later step."""
+    clear_screen()
+    print_box("Basic Snapshot")
     print("\nBasic snapshot: not implemented yet.")
     # Once real output exists, use:
     # save_output(session, "basic_snapshot", collected_output)
@@ -98,14 +155,20 @@ def main():
     }
 
     while True:
-        print("\nTroubleshooting Tool")
-        print(f"Serial number: {session['serial_number'] or '(not set)'}")
-        print(f"Jira ticket: {session['jira_ticket'] or '(not set)'}")
-        print(f"Hostname: {session['hostname'] or '(not set)'}")
-        print("\n1. Enter or replace serial number / Jira ticket / hostname")
-        print("2. Node connection verification and identity")
-        print("3. Basic snapshot")
-        print("0. Exit")
+        clear_screen()
+        print_box(
+            "Troubleshooting Tool",
+            [
+                f"Serial number: {session['serial_number'] or '(not set)'}",
+                f"Jira ticket: {session['jira_ticket'] or '(not set)'}",
+                f"Hostname: {session['hostname'] or '(not set)'}",
+                None,
+                "1. Enter or replace serial number / Jira ticket / hostname",
+                "2. Node connection verification and identity",
+                "3. Basic snapshot",
+                "0. Exit",
+            ],
+        )
 
         choice = input("\nSelect an option: ").strip()
 
@@ -117,14 +180,14 @@ def main():
         elif choice in ("2", "3"):
             if not has_case_details(session):
                 print("Choose option 1 and enter a serial number or Jira ticket first.")
-                continue
-
-            if choice == "2":
+            elif choice == "2":
                 verify_node(session)
             else:
                 basic_snapshot(session)
         else:
             print("Invalid selection. Choose 0, 1, 2, or 3.")
+
+        pause()
 
 
 if __name__ == "__main__":
