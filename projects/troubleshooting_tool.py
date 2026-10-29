@@ -13,22 +13,29 @@ OUTPUT_DIR = Path.home() / "troubleshooting-output"
 
 
 def has_case_details(session):
+    """A serial number or Jira ticket is required; hostname is optional."""
     return bool(session["serial_number"] or session["jira_ticket"])
 
 
 def set_case_details(session):
     """Replace the active identifiers together, preserving capitalization."""
     print("\nEnter the identifiers for this case.")
-    print("Leave one blank if unused. Both blank keeps the current details.")
+    print("Provide a serial number or Jira ticket. Hostname is optional.")
+    print("When an update is accepted, blank fields clear their old values.")
 
     serial_number = input("Serial number (case-sensitive): ").strip()
     jira_ticket = input("Jira ticket number: ").strip()
+    hostname = input("Hostname (example: gpu0143.o1.local): ").strip()
 
     if not (serial_number or jira_ticket):
-        print("At least one identifier is required. Current details unchanged.")
+        print("A serial number or Jira ticket is required. Current details unchanged.")
         return
 
-    session.update(serial_number=serial_number, jira_ticket=jira_ticket)
+    session.update(
+        serial_number=serial_number,
+        jira_ticket=jira_ticket,
+        hostname=hostname,
+    )
     print("Case details updated for this session.")
 
 
@@ -38,7 +45,11 @@ def save_output(session, action, output):
         raise ValueError("Enter a serial number or Jira ticket before saving.")
 
     parts = []
-    for label, key in (("SN", "serial_number"), ("JIRA", "jira_ticket")):
+    for label, key in (
+        ("SN", "serial_number"),
+        ("JIRA", "jira_ticket"),
+        ("HOST", "hostname"),
+    ):
         if session[key]:
             # Encode filename separators while keeping letter case intact.
             parts.append(f"{label}_{quote(session[key], safe='-_.')}")
@@ -54,6 +65,7 @@ def save_output(session, action, output):
     with output_path.open("x", encoding="utf-8") as report:
         report.write(f"Serial number: {session['serial_number'] or '(not provided)'}\n")
         report.write(f"Jira ticket: {session['jira_ticket'] or '(not provided)'}\n")
+        report.write(f"Hostname: {session['hostname'] or '(not provided)'}\n")
         report.write(f"Action: {action}\n")
         report.write(f"Collected at: {now.isoformat(timespec='seconds')}\n\n")
         report.write(output)
@@ -79,13 +91,18 @@ def basic_snapshot(session):
 
 def main():
     # Create the session once, before the loop. Nothing reloads it from disk.
-    session = {"serial_number": "", "jira_ticket": ""}
+    session = {
+        "serial_number": "",
+        "jira_ticket": "",
+        "hostname": "",
+    }
 
     while True:
         print("\nTroubleshooting Tool")
         print(f"Serial number: {session['serial_number'] or '(not set)'}")
         print(f"Jira ticket: {session['jira_ticket'] or '(not set)'}")
-        print("\n1. Enter or replace serial number / Jira ticket")
+        print(f"Hostname: {session['hostname'] or '(not set)'}")
+        print("\n1. Enter or replace serial number / Jira ticket / hostname")
         print("2. Node connection verification and identity")
         print("3. Basic snapshot")
         print("0. Exit")
@@ -93,7 +110,7 @@ def main():
         choice = input("\nSelect an option: ").strip()
 
         if choice == "0":
-            print("Exiting the troubleshooting tool.")           
+            print("Exiting the troubleshooting tool.")
             break
         elif choice == "1":
             set_case_details(session)
